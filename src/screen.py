@@ -49,6 +49,11 @@ class Screen:
         img = np.array(self._sct.grab(self._monitor_roi))
         return img[:, :, :3]
 
+    def save_screenshot(self, dir: str = ""):
+        img = self.grab()
+        time_str = time.strftime("%Y-%m-%d %H-%M-%S", time.localtime())
+        cv2.imwrite(f"screenshots/{dir}/{time_str}.png", img)
+
 
 if __name__ == "__main__":
     from config import Config

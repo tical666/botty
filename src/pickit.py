@@ -27,6 +27,9 @@ class PickIt:
         found_items = False
         keyboard.send(self._config.char["show_items"], do_press=True, do_release=False)
         time.sleep(1.0) # sleep needed here to give d2r time to display items on screen on keypress
+        # save loot screenshot
+        if self._config.general["loot_screenshots"]:
+            self._screen.save_screenshot("loot")
         start = time.time()
         time_out = False
         while not time_out:
