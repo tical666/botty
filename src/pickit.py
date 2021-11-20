@@ -9,7 +9,7 @@ from logger import Logger
 from screen import Screen
 from ui_manager import UiManager
 import threading
-from utils.misc import send_discord
+from utils.misc import send_discord, send_discord_image
 
 
 class PickIt:
@@ -31,8 +31,13 @@ class PickIt:
         #Creating a screenshot of the current loot
         if self._config.general["loot_screenshots"]:
             img = self._screen.grab()
-            cv2.imwrite("./loot_screenshots/info_debug_drop_" + time.strftime("%Y%m%d_%H%M%S") + ".png", img)
+            timeStr = time.strftime("%Y%m%d_%H%M%S")
+            img_file = f"./loot_screenshots/info_debug_drop_{timeStr}.png"
+            cv2.imwrite(img_file, img)
             Logger.debug("Took a screenshot of current loot")
+            send_discord_thread = threading.Thread(target=send_discord_image, args=(img_file, timeStr, self._config.general["custom_discord_hook"]))
+            send_discord_thread.daemon = True
+            send_discord_thread.start()
         start = time.time()
         time_out = False
         picked_up_items = []

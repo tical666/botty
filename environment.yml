@@ -20,3 +20,4 @@ dependencies:
     - pytest
     - pytest-env
     - pytest-pythonpath
+    - discord-webhook
