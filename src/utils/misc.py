@@ -7,6 +7,7 @@ from typing import List, Tuple
 import requests
 import subprocess
 from version import __version__
+from discord_webhook import DiscordWebhook
 
 
 def send_discord(msg, url: str):
@@ -14,6 +15,12 @@ def send_discord(msg, url: str):
         return
     data = {"content": f"{msg} (v{__version__})"}
     requests.post(url, json=data)
+
+def send_discord_image(img_file: str, msg: str, webhook_url:str):
+    webhook = DiscordWebhook(url=webhook_url, content=msg)
+    with open(img_file, "rb") as f:
+        webhook.add_file(file=f.read(), filename="screenshot.png")
+    webhook.execute()
 
 def wait(min_seconds, max_seconds = None):
     if max_seconds is None:
