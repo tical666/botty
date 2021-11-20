@@ -1,4 +1,5 @@
 __pycache__/
+.pytest_cache/
 *_generated.py
 playground.py
 *.pyc
@@ -17,3 +18,4 @@ custom.ini
 .vscode
 info_screenshots/
 loot_screenshots/
+.venv

@@ -3,13 +3,13 @@ from utils.custom_mouse import mouse
 from template_finder import TemplateFinder
 from ui_manager import UiManager
 from screen import Screen
-from utils.misc import wait
-import random
+from utils.misc import wait, cut_roi
+import cv2
 import math
 import keyboard
 from logger import Logger
 import time
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union, List
 from config import Config
 
 
@@ -30,15 +30,22 @@ class IChar:
         # It actually is 0.04s per frame but many people have issues with it (because of lag?)
         self._cast_duration = self._char_config["casting_frames"] * 0.05 + 0.04
 
-    def select_by_template(self, template_type: str) -> bool:
+    def select_by_template(self, template_type:  Union[str, List[str]], expect_loading_screen: bool = False) -> bool:
+        if template_type == "A5_STASH":
+            # sometimes waypoint is opened and stash not found because of that, check for that
+            if self._template_finder.search("WAYPOINT_MENU", self._screen.grab())[0]:
+                keyboard.send("esc")
         Logger.debug(f"Select {template_type}")
-        success, screen_loc = self._template_finder.search_and_wait(template_type, time_out=10)
-        if success:
-            x_m, y_m = self._screen.convert_screen_to_monitor(screen_loc)
-            mouse.move(x_m, y_m)
-            wait(0.3, 0.4)
-            mouse.click(button="left")
-            return True
+        start = time.time()
+        while (time.time() - start)  < 8:
+            success, screen_loc = self._template_finder.search_and_wait(template_type, time_out=2)
+            if success:
+                x_m, y_m = self._screen.convert_screen_to_monitor(screen_loc)
+                mouse.move(x_m, y_m)
+                wait(0.3, 0.4)
+                mouse.click(button="left")
+                if not expect_loading_screen or self._ui_manager.wait_for_loading_screen(2.0):
+                    return True
         return False
 
     def move(self, pos_monitor: Tuple[float, float], force_tp: bool = False):
@@ -66,11 +73,15 @@ class IChar:
                 wait(0.8)
 
     def tp_town(self):
-        # TODO: Check if tp is available
-        #       e.g. cut img before switching to TP, then after, they should have changed
-        #            if they are the same, char is out of tps!
+        skill_before = cut_roi(self._screen.grab(), self._config.ui_roi["skill_right"])
         keyboard.send(self._char_config["tp"])
-        wait(0.05, 0.1)
+        wait(0.1, 0.1)
+        skill_after = cut_roi(self._screen.grab(), self._config.ui_roi["skill_right"])
+        _, max_val, _, _ = cv2.minMaxLoc(cv2.matchTemplate(skill_after, skill_before, cv2.TM_CCOEFF_NORMED))
+        if max_val > 0.96:
+            # found same skill again, thus no more tps available
+            Logger.warning("Out of tps")
+            return False
         mouse.click(button="right")
         # TODO: Add hardcoded coordinates to ini file
         pos_away = self._screen.convert_abs_to_monitor((int(-250 * self._config.scale), -30))
@@ -78,7 +89,7 @@ class IChar:
         wait(0.8, 1.3) # takes quite a while for tp to be visible
         roi = self._config.ui_roi["tp_search"]
         start = time.time()
-        while (time.time() - start)  < 7:
+        while (time.time() - start)  < 8:
             img = self._screen.grab()
             success1, pos1 = self._template_finder.search(
                 "BLUE_PORTAL", 
@@ -108,19 +119,28 @@ class IChar:
         return False
 
     def _pre_buff_cta(self):
-        wait(0.1, 0.15)
+        # save current skill img
+        skill_before = cut_roi(self._screen.grab(), self._config.ui_roi["skill_right"])
         keyboard.send(self._char_config["weapon_switch"])
         wait(0.28, 0.35)
         keyboard.send(self._char_config["battle_command"])
         wait(0.08, 0.19)
         mouse.click(button="right")
-        wait(self._cast_duration + 0.04, self._cast_duration + 0.07)
+        wait(self._cast_duration + 0.08, self._cast_duration + 0.1)
         keyboard.send(self._char_config["battle_orders"])
         wait(0.08, 0.19)
         mouse.click(button="right")
-        wait(self._cast_duration + 0.04, self._cast_duration + 0.07)
+        wait(self._cast_duration + 0.08, self._cast_duration + 0.1)
         keyboard.send(self._char_config["weapon_switch"])
-        wait(0.28, 0.35)
+        wait(0.25, 0.3)
+        # Make sure that we are back at the previous skill
+        skill_after = cut_roi(self._screen.grab(), self._config.ui_roi["skill_right"])
+        _, max_val, _, _ = cv2.minMaxLoc(cv2.matchTemplate(skill_after, skill_before, cv2.TM_CCOEFF_NORMED))
+        if max_val < 0.96:
+            Logger.warning("Failed to switch weapon, try again")
+            wait(1.0)
+            keyboard.send(self._char_config["weapon_switch"])
+            wait(0.4)
 
     @abstract
     def pre_buff(self):

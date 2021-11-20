@@ -95,7 +95,7 @@ class Bot:
 
     def trigger_or_stop(self, name: str):
         if self._pausing:
-            Logger.info("Botty is now pausing")
+            Logger.info(f"{self._config.general['name']} is now pausing")
         while self._pausing:
             time.sleep(0.2)
         if not self._stopping:
@@ -171,9 +171,6 @@ class Bot:
                 return
             self._curr_location = Location.A5_STASH
             time.sleep(0.3)
-            # sometimes waypoint is opened and stash not found because of that, check for that
-            if self._template_finder.search("WAYPOINT_MENU", self._screen.grab())[0]:
-                keyboard.send("esc")
             if self._char.select_by_template("A5_STASH"):
                 self._ui_manager.stash_all_items(self._config.char["num_loot_columns"])
                 self._picked_up_items = False
@@ -218,7 +215,6 @@ class Bot:
             self.trigger_or_stop("end_game")
 
     def _start_run(self, key, run):
-        Logger.info(f"{key}")
         self._do_runs[key] = False
         run_thread = threading.Thread(target=run.doit, args=(self,))
         run_thread.start()
@@ -252,6 +248,7 @@ class Bot:
             def __init__(self):
                 self.success = False
             def doit(self, bot: Bot):
+                Logger.info("Run Pindle")
                 self.success = bot._pather.traverse_nodes(bot._curr_location, Location.NIHLATHAK_PORTAL, bot._char)
                 if not self.success:
                     return
@@ -287,6 +284,7 @@ class Bot:
             def __init__(self):
                 self.success = False
             def doit(self, bot: Bot):
+                Logger.info("Run Eldritch")
                 self.success = bot._pather.traverse_nodes(bot._curr_location, Location.A5_WP, bot._char)
                 if not self.success:
                     return
@@ -296,7 +294,7 @@ class Bot:
                 wait(1.0)
                 bot._ui_manager.use_wp(4, 1)
                 time.sleep(0.5)
-                self.success = bot._template_finder.search_and_wait(["ELDRITCH_0", "ELDRITCH_1"], threshold=0.65, time_out=20)[0]
+                self.success = bot._template_finder.search_and_wait(["ELDRITCH_0", "ELDRITCH_START"], threshold=0.65, time_out=20)[0]
                 if not self.success:
                     return
                 if not bot._pre_buffed:
@@ -315,15 +313,13 @@ class Bot:
                     bot._pather.traverse_nodes_fixed("eldritch_save_tp", bot._char)
                 # shenk
                 if bot._route_config["run_shenk"]:
+                    Logger.info("Run Shenk")
                     self.success = bot._pather.traverse_nodes(Location.SHENK_START, Location.SHENK_SAVE_DIST, bot._char)
                     if not self.success:
                         return
                     wait(0.15, 0.2)
                     bot._char.kill_shenk()
-                    wait(0.5)
-                    # do two pickups on shenk because flames sometimes mess up item search
-                    bot._picked_up_items |= bot._pickit.pick_up_items(bot._char)
-                    wait(1.5, 1.8)
+                    wait(1.9, 2.4)
                     bot._picked_up_items |= bot._pickit.pick_up_items(bot._char)
                     # in order to move away for items to have a clear tp, move to the end of the hall
                     if not bot.is_last_run():
@@ -388,6 +384,7 @@ class Bot:
             else:
                 self.trigger_or_stop("end_game")
         else:
+            self._tps_left = 0
             self.trigger_or_stop("end_game")
 
 

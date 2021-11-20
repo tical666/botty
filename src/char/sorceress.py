@@ -118,7 +118,6 @@ class Sorceress(IChar):
         self._pather.traverse_nodes(Location.SHENK_SAVE_DIST, Location.SHENK_END, self, time_out=2.0, force_tp=True)
 
 
-
 if __name__ == "__main__":
     import os
     import keyboard
@@ -134,4 +133,5 @@ if __name__ == "__main__":
     ui_manager = UiManager(screen, t_finder)
     char = Sorceress(config.sorceress, config.char, screen, t_finder, ui_manager, pather)
     # char.pre_buff()
-    char.tp_town()
+    # char.tp_town()
+    char.select_by_template(["A5_RED_PORTAL", "A5_RED_PORTAL_TEXT"], expect_loading_screen=True)
