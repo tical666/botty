@@ -31,8 +31,8 @@ Download the a prebuilt release [here](https://github.com/aeon0/botty/releases).
 
 
 ## Color Test Mode
-To check if you graphic settings are good and if the bot would pick up items there is a **Color Test Mode** built in. Start botty and press F10 (Default key). This will open up a (mostly black) window. Start a game in D2R and throw some items of different type on the ground. If you now bring forward the debug window all items should show up with their names while the background is black. If you throw an item on the ground that should be picked up, it will have a red circle.</br>
-<img src="assets/docs/color_checker.png" width="400">
+To check if you graphic settings are good and if the bot would pick up items there is a **Graphic Debugger Mode** built in. Start botty and press F10 (Default key). This will open up a (mostly black) window. Start a game in D2R and go to A5. You should see some templates with blue circles detected and scores printed out to the console. E.g. for 720p you should see scores higher 0.8 for the templates. To check item finding, throw some items of different types on the ground. The debug window should show the item names with black background. If you throw an item on the ground that should be picked up, it will have a red circle. The console will print out the scores for each item that would be picked up. Scores should be well above 0.9 for these items.</br>
+<img src="assets/docs/graphic_debugger.png" width="900">
 
 ## Development
 Check out the [development.md](development.md) docu for infos on how to build from source and details of the project structure and code.
@@ -56,11 +56,10 @@ monitor | Select on which monitor D2R is running in case multiple are available
 res | Resolution settings can be any of [1920_1080, 1280_720]
 offset_top | Your D2R windows offset from top of the screen (including the window bar). For fullscreen leave at 0.
 offset_left | Your D2R window offset from left of screen. For fullscreen leave at 0.
-min_game_length_s | Games must have at least this length, will wait in hero selection for if game is too quick (to avoid server connection issues)
 max_game_length_s | Botty will attempt to stop whatever its doing and try to restart a new game. Note if this fails, botty will attempt to shut down D2R and Bnet
 exit_key | Pressing this key (anywhere), will force botty to shut down
 resume_key | After starting the exe botty will wait for this keypress to atually start botting away
-color_checker_key | Pressing this key will start a debug mode to check if the color filtering works with your settings. It also includes the item search and marks items it would pick up with red circles
+graphic_debugger_key | Pressing this key will start a debug mode to check if the color filtering works with your settings. It also includes the item search and marks items it would pick up with red circles
 logger_lvl | Can be any of [info, debug] and determines how much output you see on the command line
 randomize_runs | If 0, the order will always be pindle -> eldritch/shenk. If 1 the order will be random.
 difficulty | Set to `normal` `nightmare` or `hell` for game difficulty
@@ -100,6 +99,8 @@ cta_available | 0: no cta available, 1: cta is available and should be used duri
 weapon_switch | Hotkey for "weapon switch" (only needed if cta_available=1)
 battle_order | Hotkey for battle order from cta (only needed if cta_available=1)
 battle_command | Hotkey for battle command from cta (only needed if cta_available=1)
+belt_hp_columns | Number of belt columns for healing potions
+belt_mp_columns | Number of belt columns for mana potions
 
  [sorceress]                    | Descriptions
 --------------------------------|---------------------------------------------

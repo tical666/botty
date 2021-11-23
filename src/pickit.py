@@ -9,14 +9,16 @@ from logger import Logger
 from screen import Screen
 from ui_manager import UiManager
 import threading
-from utils.misc import send_discord, send_discord_image
+from utils.misc import send_discord_image
+from game_stats import GameStats
 
 
 class PickIt:
-    def __init__(self, screen: Screen, item_finder: ItemFinder, ui_manager: UiManager):
+    def __init__(self, screen: Screen, item_finder: ItemFinder, ui_manager: UiManager, game_stats: GameStats = None):
         self._item_finder = item_finder
         self._screen = screen
         self._ui_manager = ui_manager
+        self._game_stats = game_stats
         self._config = Config()
 
     def pick_up_items(self, char: IChar) -> bool:
@@ -47,9 +49,11 @@ class PickIt:
                 Logger.warning("Got stuck during pickit, skipping it this time...")
             img = self._screen.grab()
             item_list = self._item_finder.search(img)
-            if not self._ui_manager.check_free_belt_spots():
-                # no free slots in belt, do not pick up health or mana potions
-                item_list = [x for x in item_list if "potion" not in x.name]
+            need_hp, need_mp = self._ui_manager.check_need_pots()
+            if need_mp is False:
+                item_list = [x for x in item_list if "mana_potion" not in x.name]
+            if need_hp is False:
+                item_list = [x for x in item_list if "healing_potion" not in x.name]
             if len(item_list) == 0:
                 break
             else:
@@ -62,7 +66,7 @@ class PickIt:
                     # no need to stash potions, scrolls, or gold 
                     if (("potion" not in closest_item.name) and ("tp_scroll" != closest_item.name) and ("misc_gold" not in closest_item.name)):
                         found_items = True
-                    Logger.info(f"Picking up {closest_item.name}")
+                    Logger.info(f"Picking up: {closest_item.name}")
                     mouse.move(x_m, y_m)
                     time.sleep(0.1)
                     mouse.click(button="left")
@@ -76,13 +80,7 @@ class PickIt:
                     else:
                         # send log to discord
                         if found_items and self._config.items[closest_item.name] == 2 and closest_item.name not in picked_up_items:
-                            if self._config.general["custom_discord_hook"] != "":
-                                send_discord_thread = threading.Thread(
-                                    target=send_discord,
-                                    args=(f"{self._config.general['name']} just found: {closest_item.name}", self._config.general["custom_discord_hook"])
-                                )
-                                send_discord_thread.daemon = True
-                                send_discord_thread.start()
+                            self._game_stats.log_item_pickup(closest_item.name)
                         picked_up_items.append(closest_item.name)
                 else:
                     char.move((x_m, y_m))

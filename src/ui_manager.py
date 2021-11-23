@@ -12,6 +12,8 @@ import numpy as np
 from logger import Logger
 from utils.misc import wait, cut_roi, color_filter, send_discord
 from config import Config
+from item_finder import ItemFinder
+
 
 class UiManager():
     """Everything that is clicking on some static 2D UI or is checking anything in regard to it should be placed here."""
@@ -114,12 +116,14 @@ class UiManager():
             return "mana"
         return "empty"
 
-    def check_free_belt_spots(self) -> bool:
+    def check_need_pots(self) -> Tuple[int, int]:
         """
         Check if any column in the belt is free (only checking the bottom row)
-        :return: Bool if any column in belt is free
+        :return: need_health_pots, need_mana_pots
         """
         img = self._screen.grab()
+        mana_columns = 0
+        health_columns = 0
         for i in range(4):
             roi = [
                 self._config.ui_pos["potion1_x"] - (self._config.ui_pos["potion_width"] // 2) + i * self._config.ui_pos["potion_next"],
@@ -129,9 +133,15 @@ class UiManager():
             ]
             potion_img = cut_roi(img, roi)
             potion_type = self.potion_type(potion_img)
-            if potion_type == "empty":
-                return True
-        return False
+            if potion_type == "health":
+                health_columns += 1
+            elif potion_type == "mana":
+                mana_columns += 1
+
+        # TODO: handle rejuv potions as well when that potion type is added
+        need_health_pots = health_columns < self._config.char["belt_hp_columns"]
+        need_mana_pots = mana_columns < self._config.char["belt_mp_columns"]
+        return need_health_pots, need_mana_pots
 
     def save_and_exit(self, does_chicken: bool = False) -> bool:
         """
@@ -279,7 +289,21 @@ class UiManager():
                 return True
         return False
 
-    def stash_all_items(self, num_loot_columns: int):
+    def _keep_item(self, item_finder: ItemFinder) -> bool:
+        """
+        Check if an item should be kept, the item should be hovered and in own inventory when function is called
+        :param item_finder: ItemFinder to check if item is in pickit
+        :return: Bool if item should be kept
+        """
+        wait(0.4, 0.5)
+        img = self._screen.grab()
+        _, w, _ = img.shape
+        img = img[:, (w//2):,:]
+        item_list = item_finder.search(img)
+        item_list = [x for x in item_list if "potion" not in x.name]
+        return len(item_list) > 0
+
+    def stash_all_items(self, num_loot_columns: int, item_finder: ItemFinder):
         """
         Stashing all items in inventory. Stash UI must be open when calling the function.
         :param num_loot_columns: Number of columns used for loot from left
@@ -312,19 +336,32 @@ class UiManager():
             wait(0.4, 0.6)
             keyboard.send("enter") #if stash already full of gold just nothing happens -> gold stays on char -> no popup window
         # stash stuff
-        keyboard.send('ctrl', do_release=False)
+        center_m = self._screen.convert_abs_to_monitor((0, 0))
         for column, row in itertools.product(range(num_loot_columns), range(4)):
             img = self._screen.grab()
             slot_pos, slot_img = self._get_slot_pos_and_img(img, column, row)
             if self._slot_has_item(slot_img):
                 x_m, y_m = self._screen.convert_screen_to_monitor(slot_pos)
                 mouse.move(x_m, y_m, randomize=10, delay_factor=[1.0, 1.3])
-                wait(0.2, 0.3)
-                mouse.press(button="left")
-                wait(0.25, 0.35)
-                mouse.release(button="left")
-                wait(0.4, 0.5)
-        keyboard.send('ctrl', do_press=False)
+                # check item again and discard it or stash it
+                if self._keep_item(item_finder):
+                    keyboard.send('ctrl', do_release=False)
+                    wait(0.2, 0.3)
+                    mouse.press(button="left")
+                    wait(0.25, 0.35)
+                    mouse.release(button="left")
+                    wait(0.4, 0.5)
+                    keyboard.send('ctrl', do_press=False)
+                else:
+                    mouse.press(button="left")
+                    wait(0.2, 0.4)
+                    mouse.release(button="left")
+                    mouse.move(*center_m, randomize=20)
+                    wait(0.2, 0.3)
+                    mouse.press(button="left")
+                    wait(0.2, 0.3)
+                    mouse.release(button="left")
+                    wait(0.5, 0.5)
         Logger.debug("Check if stash is full")
         time.sleep(0.6)
         # move mouse away from inventory, for some reason it was sometimes included in the grabed img
@@ -340,13 +377,13 @@ class UiManager():
             self._curr_stash += 1
             if self._curr_stash > 3:
                 Logger.error("All stash is full, quitting")
-                if config.general["custom_discord_hook"]:
-                    send_discord(f"{config.general['name']} all stash is full, quitting", config.general["custom_discord_hook"])
+                if self._config.general["custom_discord_hook"]:
+                    send_discord(f"{self._config.general['name']} all stash is full, quitting", self._config.general["custom_discord_hook"])
                 os._exit(1)
             else:
                 # move to next stash
                 wait(0.5, 0.6)
-                return self.stash_all_items(num_loot_columns)
+                return self.stash_all_items(num_loot_columns, item_finder)
 
         Logger.debug("Done stashing")
         wait(0.4, 0.5)
@@ -437,5 +474,6 @@ if __name__ == "__main__":
     config = Config()
     screen = Screen(config.general["monitor"])
     template_finder = TemplateFinder(screen)
+    item_finder = ItemFinder()
     ui_manager = UiManager(screen, template_finder)
-    ui_manager.save_and_exit()
+    ui_manager.stash_all_items(9, item_finder)
