@@ -13,7 +13,6 @@ run.dist/
 run.onefile-build/
 generated/
 botty_v*/
-custom.ini
 *info_*.png
 .vscode
 info_screenshots/
