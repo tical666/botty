@@ -255,7 +255,7 @@ class Bot:
                 if not self.success:
                     return
                 bot._curr_location = Location.NIHLATHAK_PORTAL
-                wait(0.2, 0.4)
+                wait(0.6)
                 self.success &= bot._char.select_by_template("A5_RED_PORTAL")
                 time.sleep(0.5)
                 self.success &= bot._template_finder.search_and_wait(["PINDLE_0", "PINDLE_1"], threshold=0.65, time_out=20)[0]
@@ -291,7 +291,7 @@ class Bot:
                 if not self.success:
                     return
                 bot._curr_location = Location.A5_WP
-                wait(0.6)
+                wait(0.7)
                 bot._char.select_by_template("A5_WP")
                 wait(1.0)
                 bot._ui_manager.use_wp(4, 1)

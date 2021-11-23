@@ -75,7 +75,7 @@ class IChar:
     def tp_town(self):
         skill_before = cut_roi(self._screen.grab(), self._config.ui_roi["skill_right"])
         keyboard.send(self._char_config["tp"])
-        wait(0.1, 0.1)
+        wait(0.2)
         skill_after = cut_roi(self._screen.grab(), self._config.ui_roi["skill_right"])
         _, max_val, _, _ = cv2.minMaxLoc(cv2.matchTemplate(skill_after, skill_before, cv2.TM_CCOEFF_NORMED))
         if max_val > 0.96:
