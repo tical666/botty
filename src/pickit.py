@@ -31,7 +31,7 @@ class PickIt:
         :return: Bool if any items were picked up or not. (Does not account for picking up scrolls and pots)
         """
         found_items = False
-        keyboard.send(self._config.char["show_items"], do_press=True, do_release=False)
+        keyboard.send(self._config.char["show_items"])
         time.sleep(1.0) # sleep needed here to give d2r time to display items on screen on keypress
         #Creating a screenshot of the current loot
         if self._config.general["loot_screenshots"]:
@@ -75,10 +75,10 @@ class PickIt:
                     # if potion is picked up, record it in the belt manager
                     if "potion" in closest_item.name:
                         self._belt_manager.picked_up_pot(closest_item.name)
-                    # no need to stash potions, scrolls, or gold 
+                    # no need to stash potions, scrolls, or gold
                     if "potion" not in closest_item.name and "tp_scroll" != closest_item.name and "misc_gold" not in closest_item.name:
                         found_items = True
-                    Logger.info(f"Picking up: {closest_item.name}")
+                    Logger.info(f"Picking up: {closest_item.name} ({closest_item.score*100:.1f}% confidence)")
                     mouse.move(x_m, y_m)
                     time.sleep(0.1)
                     mouse.click(button="left")
@@ -97,7 +97,7 @@ class PickIt:
                 else:
                     char.move((x_m, y_m))
                     time.sleep(0.1)
-        keyboard.send(self._config.char["show_items"], do_press=False, do_release=True)
+        keyboard.send(self._config.char["show_items"])
         return found_items
 
 

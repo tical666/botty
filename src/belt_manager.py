@@ -105,7 +105,7 @@ class BeltManager:
             "health": self._config.char["belt_hp_columns"],
             "mana": self._config.char["belt_mp_columns"],
         }
-        center_m = self._screen.convert_abs_to_monitor((0, 0))
+        center_m = self._screen.convert_abs_to_monitor((-200, -120))
         mouse.move(*center_m, randomize=100)
         keyboard.send(self._config.char["show_belt"])
         wait(0.5)
@@ -129,7 +129,6 @@ class BeltManager:
                 potion_type = self._potion_type(self._cut_potion_img(img, column, row))
                 if row == 0:
                     if potion_type != "empty":
-                        rows_left[potion_type] -= 1
                         current_column = potion_type
                     else:
                         for key in rows_left:
