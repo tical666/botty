@@ -15,6 +15,7 @@ generated/
 botty_v*/
 *info_*.png
 .vscode
+.vs/
 info_screenshots/
 loot_screenshots/
 .venv
