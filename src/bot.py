@@ -26,11 +26,12 @@ import random
 
 
 class Bot:
-    def __init__(self):
+    def __init__(self, screen: Screen, pick_corpose_on_start: bool = False):
+        self._screen = screen
+        self._pick_corpose_on_start = pick_corpose_on_start
         self._config = Config()
         self._game_stats = GameStats()
-        self._game_recovery = GameRecovery()
-        self._screen = Screen(self._config.general["monitor"])
+        self._game_recovery = GameRecovery(self._screen)
         self._template_finder = TemplateFinder(self._screen)
         self._item_finder = ItemFinder()
         self._ui_manager = UiManager(self._screen, self._template_finder)
@@ -65,6 +66,7 @@ class Bot:
         self._stopping = False
         self._pausing = False
         self._current_threads = []
+        self._no_stash_counter = 0
 
         self._states=['hero_selection', 'a5_town', 'pindle', 'shenk']
         self._transitions = [
@@ -125,7 +127,8 @@ class Bot:
     def on_create_game(self):
         self._game_stats.log_start_game()
         self._template_finder.search_and_wait("D2_LOGO_HS", roi=self._config.ui_roi["hero_selection_logo"])
-        self._ui_manager.start_game()
+        if not self._ui_manager.start_game():
+            return
         self._template_finder.search_and_wait(["A5_TOWN_1", "A5_TOWN_0"])
         self._tp_is_up = False
         self._curr_location = Location.A5_TOWN_START
@@ -136,7 +139,8 @@ class Bot:
         self.trigger_or_stop("maintenance")
 
     def on_maintenance(self):
-        if self._death_manager.died() or self._health_manager.did_chicken():
+        if self._pick_corpose_on_start or self._death_manager.died() or self._health_manager.did_chicken():
+            self._pick_corpose_on_start = False
             time.sleep(0.6)
             # Also do this for did_chicken because we can not be 100% sure that chicken did not press esc before
             # the death manager could determine if we were dead
@@ -162,8 +166,10 @@ class Bot:
                 return
             self._curr_location = Location.A5_TOWN_START
 
-        # Stash stuff
-        if self._picked_up_items:
+        # Stash stuff, either when item was picked up or after 3 runs without stashing (so unwanted loot will not cause inventory full)
+        self._no_stash_counter += 1
+        if self._picked_up_items or (self._no_stash_counter > 3 and self._ui_manager.should_stash(self._config.char["num_loot_columns"])):
+            self._no_stash_counter = 0
             Logger.info("Stashing picked up items.")
             if not self._pather.traverse_nodes(self._curr_location, Location.A5_STASH, self._char):
                 self.trigger_or_stop("end_game")
@@ -338,6 +344,7 @@ class Bot:
 
     def on_end_game(self):
         self._pre_buffed = 0
+        self._death_manager.handle_death_screen()
         if self._health_manager.did_chicken() or self._death_manager.died():
             Logger.info("End game while chicken or death happened. Running game recovery to get back to hero selection.")
             time.sleep(1.5)
@@ -358,6 +365,7 @@ class Bot:
     def on_end_run(self):
         success = self._char.tp_town()
         self._tps_left -= 1
+        success &= not self._death_manager.handle_death_screen()
         if success:
             success, _= self._template_finder.search_and_wait(["A5_TOWN_1", "A5_TOWN_0"], time_out=10)
             if success:
@@ -375,7 +383,9 @@ if __name__ == "__main__":
     import keyboard
     keyboard.add_hotkey("f12", lambda: os._exit(1))
     keyboard.wait("f11")
-    bot = Bot()
+    config = Config()
+    screen = Screen(config.general["monitor"])
+    bot = Bot(screen)
     bot.state = "a5_town"
     bot._curr_location = Location.A5_TOWN_START
     bot.on_maintenance()
