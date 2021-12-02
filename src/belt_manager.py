@@ -70,18 +70,19 @@ class BeltManager:
         ]
         return cut_roi(img, roi)
 
-    def drink_potion(self, potion_type: str, merc: bool = False) -> bool:
+    def drink_potion(self, potion_type: str, merc: bool = False, stats: List = []) -> bool:
         img = self._screen.grab()
         for i in range(4):
             potion_img = self._cut_potion_img(img, i, 0)
             if self._potion_type(potion_img) == potion_type:
                 key = f"potion{i+1}"
                 if merc:
-                    Logger.debug(f"Give {potion_type} potion in slot {i+1} to merc")
+                    Logger.debug(f"Give {potion_type} potion in slot {i+1} to merc. HP: {(stats[0]*100):.1f}%")
                     keyboard.send(f"left shift + {self._config.char[key]}")
                 else:
-                    Logger.debug(f"Drink {potion_type} potion in slot {i+1}")
+                    Logger.debug(f"Drink {potion_type} potion in slot {i+1}. HP: {(stats[0]*100):.1f}%, Mana: {(stats[1]*100):.1f}%")
                     keyboard.send(self._config.char[key])
+                self._pot_needs[potion_type] = max(0, self._pot_needs[potion_type] + 1)
                 return True
         return False
 
@@ -105,8 +106,11 @@ class BeltManager:
             "health": self._config.char["belt_hp_columns"],
             "mana": self._config.char["belt_mp_columns"],
         }
-        center_m = self._screen.convert_abs_to_monitor((-200, -120))
-        mouse.move(*center_m, randomize=100)
+        # In case we are in danger that the mouse hovers the belt rows, move it to the center
+        screen_mouse_pos = self._screen.convert_monitor_to_screen(mouse.get_position())
+        if screen_mouse_pos[1] > self._config.ui_pos["screen_height"] * 0.72:
+            center_m = self._screen.convert_abs_to_monitor((-200, -120))
+            mouse.move(*center_m, randomize=100)
         keyboard.send(self._config.char["show_belt"])
         wait(0.5)
         # first clean up columns that might be too much
@@ -154,10 +158,7 @@ class BeltManager:
         pot_positions = []
         for column, row in itertools.product(range(num_loot_columns), range(4)):
             center_pos, slot_img = UiManager.get_slot_pos_and_img(self._config, img, column, row)
-            found = self._template_finder.search("SUPER_HEALING_POTION", slot_img, threshold=0.9)[0]
-            found |= self._template_finder.search("SUPER_MANA_POTION", slot_img, threshold=0.9)[0]
-            found |= self._template_finder.search("FULL_REJUV_POTION", slot_img, threshold=0.9)[0]
-            found |= self._template_finder.search("REJUV_POTION", slot_img, threshold=0.9)[0]
+            found = self._template_finder.search(["SUPER_HEALING_POTION", "SUPER_MANA_POTION", "FULL_REJUV_POTION", "REJUV_POTION"], slot_img, threshold=0.9).valid
             if found:
                 pot_positions.append(center_pos)
         keyboard.press("shift")
