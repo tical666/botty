@@ -22,7 +22,7 @@ class TemplateFinder:
     Loads images from assets/templates and assets/npc and provides search functions
     to find these assets within another image
     """
-    def __init__(self, screen: Screen, template_pathes: list[str] = ["assets\\templates", "assets\\npc", "assets\\item_properties"]):
+    def __init__(self, screen: Screen, template_pathes: list[str] = ["assets\\templates", "assets\\npc", "assets\\item_properties", "assets\\chests"]):
         self._screen = screen
         self._config = Config()
         self.last_res = None
@@ -94,8 +94,8 @@ class TemplateFinder:
             masks = [None]
             best_match = False
 
-        scores = [0] * len(ref)
-        ref_points = [(0, 0)] * len(ref)
+        scores = [0] * len(templates)
+        ref_points = [(0, 0)] * len(templates)
         for count, template in enumerate(templates):
             template_match = TemplateMatch()
             scale = scales[count]
@@ -132,13 +132,15 @@ class TemplateFinder:
                         template_match.valid = True
                         return template_match
 
-        if max(scores) > 0:
+        if len(scores) > 0 and max(scores) > 0:
             idx=scores.index(max(scores))
             try: template_match.name = names[idx]
             except: pass
             template_match.position = ref_points[idx]
             template_match.score = scores[idx]
             template_match.valid = True
+        else:
+            template_match = TemplateMatch()
 
         return template_match
 
@@ -185,18 +187,19 @@ if __name__ == "__main__":
     config = Config()
     screen = Screen(config.general["monitor"])
     template_finder = TemplateFinder(screen)
-    search_templates = ["REPAIR_NEEDED"]
+    search_templates = ["ARC_ALTAR", "ARC_ALTAR2"]
     while 1:
         # img = cv2.imread("")
         img = screen.grab()
         display_img = img.copy()
         start = time.time()
         for key in search_templates:
-            template_match = template_finder.search(key, img, best_match=True, threshold=0.35, use_grayscale=True)
+            template_match = template_finder.search(key, img, best_match=True, threshold=0.5, use_grayscale=True)
             if template_match.valid:
-                cv2.putText(display_img, str(template_match.name), template_match.position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2, cv2.LINE_AA)
+                cv2.putText(display_img, str(template_match.name), template_match.position, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
                 cv2.circle(display_img, template_match.position, 7, (255, 0, 0), thickness=5)
-                print(f"Name: {template_match.name} Pos: {template_match.position}, Score: {template_match.score}")
+                x, y = template_match.position
+                print(f"Name: {template_match.name} Pos: {template_match.position}, Dist: {625-x, 360-y}, Score: {template_match.score}")
         # print(time.time() - start)
         display_img = cv2.resize(display_img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_NEAREST)
         cv2.imshow('test', display_img)
